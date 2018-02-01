@@ -1,0 +1,16 @@
+source $NINE_CLOUD_ROOT/lib/ninecloud
+source $NINE_CLOUD_ROOT/lib/shell
+
+PATH=$PATH:$NINE_CLOUD_ROOT/commands:/root/commands
+
+PS1="ncloud:aws > "
+
+commands=`ls -1 $NINE_CLOUD_ROOT/commands/ | grep kube-aws | cut -d- -f3`
+for var in $commands; do
+    alias $var=commands/aws-$var
+done
+alias help="aws help"
+
+set -r
+
+echo $@

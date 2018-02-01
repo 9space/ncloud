@@ -1,0 +1,131 @@
+#!/bin/bash
+
+source $NINE_CLOUD_ROOT/lib/cluster
+
+validate() {
+#    if [ "$KUBE_AWS_VERSION" == "" ]; then
+#        echo Must be run inside Nine Cloud Control Server
+#    elif [ "$NINE_CLOUD_ACCOUNT_ID" == "" ]; then
+    if [ "$NINE_CLOUD_ACCOUNT_ID" == "" ]; then
+        echo Missing NINE_CLOUD_ACCOUNT_ID ENV variable
+        return 0;
+    elif [ "$AWS_ACCOUNT_ID" == "" ]; then
+        echo Missing AWS_ACCOUNT_ID ENV variable
+        return 0;
+    elif [ "$AWS_ACCESS_KEY_ID" == "" ]; then
+        echo Missing AWS_ACCESS_KEY_ID ENV variable
+        return 0;
+    elif [ "$AWS_SECRET_ACCESS_KEY" == "" ]; then
+        echo Missing AWS_SECRET_ACCESS_KEY ENV variable
+        return 0;
+    elif [ "$AWS_DEFAULT_REGION" == "" ]; then
+        echo Missing AWS_DEFAULT_REGION variable
+        return 0;
+    else
+        echo OK
+    fi
+    return 1
+}
+
+validate_shell() {
+    if [ "$NINE_CLOUD_SHELL" == "" ]; then
+        echo Must be run inside Nine Cloud CLI
+    elif [ "$NINE_CLOUD_ACCOUNT_ID" == "" ]; then
+        echo Missing NINE_CLOUD_ACCOUNT_ID ENV variable
+        return 0;
+    elif [ "$AWS_ACCOUNT_ID" == "" ]; then
+        echo Missing AWS_ACCOUNT_ID ENV variable
+        return 0;
+    elif [ "$AWS_ACCESS_KEY_ID" == "" ]; then
+        echo Missing AWS_ACCESS_KEY_ID ENV variable
+        return 0;
+    elif [ "$AWS_SECRET_ACCESS_KEY" == "" ]; then
+        echo Missing AWS_SECRET_ACCESS_KEY ENV variable
+        return 0;
+    elif [ "$AWS_DEFAULT_REGION" == "" ]; then
+        echo Missing AWS_DEFAULT_REGION variable
+        return 0;
+    else
+        echo OK
+    fi
+    return 1
+}
+
+validate_release() {
+    if [ "$NINE_CLOUD_CLUSTER_ID" == "" ]; then
+        echo Missing NINE_CLOUD_CLUSTER_ID ENV variable
+    elif [ "$NINE_CLOUD_TARGET_IMAGE" == "" ]; then
+        echo Missing NINE_CLOUD_TARGET_IMAGE ENV variable
+        return 0;
+    elif [ "$NINE_CLOUD_TARGET_IMAGE_VERSION" == "" ]; then
+        echo Missing NINE_CLOUD_TARGET_IMAGE_VERSION ENV variable
+        return 0;
+    elif [ "$NINE_CLOUD_TARGET_APP" == "" ]; then
+        echo Missing NINE_CLOUD_TARGET_APP ENV variable
+        return 0;
+    elif [ "$NINE_CLOUD_TARGET_SERVICE" == "" ]; then
+        echo Missing NINE_CLOUD_TARGET_SERVICE ENV variable
+        return 0;
+    elif [ "$NINE_CLOUD_TARGET_SERVICE_TYPE" == "" ]; then
+        echo Missing NINE_CLOUD_TARGET_SERVICE_TYPE ENV variable
+        return 0;
+    elif [ "$NINE_CLOUD_TARGET_PORT" == "" ]; then
+        echo Missing NINE_CLOUD_TARGET_PORT ENV variable
+        return 0;
+    elif [ "$NINE_CLOUD_TARGET_TIER" == "" ]; then
+        echo Missing NINE_CLOUD_TARGET_TIER ENV variable
+        return 0;
+    elif [ "$NINE_CLOUD_TARGET_REPLICAS" == "" ]; then
+        echo Missing NINE_CLOUD_TARGET_REPLICAS ENV variable
+        return 0;
+    else
+        echo OK
+    fi
+    return 1
+}
+
+validate_git_access() {
+    if [ "$NINE_CLOUD_ACCOUNT_ID" == "" ]; then
+        echo Missing NINE_CLOUD_ACCOUNT_ID ENV variable
+    else
+        echo OK
+    fi
+}
+
+validate_cloud_assets() {
+    if [ -e "nine-cloud-assets/.git" == "" ]; then
+        echo Missing nine-cloud-assets folder
+    else
+        echo OK
+    fi
+}
+
+validate_cluster_id() {
+    if [ "$NINE_CLOUD_CLUSTER_ID" == "" ]; then
+        echo Missing NINE_CLOUD_CLUSTER_ID ENV variable
+    else
+        echo OK
+    fi
+}
+
+validate_external_dns_name() {
+    if [ "$NINE_CLOUD_CLUSTER_DNS_NAME" == "" ]; then
+        echo Missing NINE_CLOUD_CLUSTER_DNS_NAME ENV variable
+    else
+        echo OK
+    fi
+}
+
+validate_aws_kms_key() {
+    if [ "$NINE_CLOUD_CLUSTER" != "" ]; then
+        kms_key="$NINE_CLOUD_ASSETS"/"$AWS_ACCOUNT_ID"-kms-key.json
+        if [ -e $kms_key ]; then
+            echo OK
+        else
+            echo MISSING $kms_key
+            echo Run aws-create-kms-key
+        fi
+    else
+        echo Invalid setup
+    fi
+}

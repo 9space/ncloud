@@ -1,0 +1,48 @@
+source $NINE_CLOUD_ROOT/lib/config
+source $NINE_CLOUD_ROOT/lib/utils
+source $NINE_CLOUD_ROOT/lib/helper
+source $NINE_CLOUD_ROOT/lib/gitlab
+source $NINE_CLOUD_ROOT/lib/docker
+source $NINE_CLOUD_ROOT/lib/kubectl
+source $NINE_CLOUD_ROOT/lib/kubeaws
+source $NINE_CLOUD_ROOT/lib/aws
+source $NINE_CLOUD_ROOT/lib/cluster
+source $NINE_CLOUD_ROOT/lib/deploy
+source $NINE_CLOUD_ROOT/lib/commands
+
+account_id() {
+    echo $NINE_CLOUD_ACCOUNT_ID
+}
+
+access_token() {
+    echo $NINE_CLOUD_ACCESS_TOKEN
+}
+
+ninecloud_login() {
+    gitlab_load
+    user=$(gitlab_user)
+    private_token=$(gitlab_private_token $user)
+    if [ "$NINE_CLOUD_ACCESS_TOKEN" == "" ]; then
+        echo FAILED
+    elif [ "$private_token" == "$NINE_CLOUD_ACCESS_TOKEN" ]; then
+        echo $user
+    else
+        echo FAILED
+    fi
+}
+
+assets() {
+    cd $NINE_CLOUD_ASSETS
+}
+
+root() {
+    cd $NINE_CLOUD_ROOT
+}
+
+projects() {
+    cd $NINE_CLOUD_PROJECTS/$1
+}
+
+templates() {
+    cd $NINE_CLOUD_ASSETS/templates
+}

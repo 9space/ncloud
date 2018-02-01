@@ -1,0 +1,22 @@
+source $NINE_CLOUD_ROOT/lib/validate
+source $NINE_CLOUD_ROOT/commands/kubectl
+
+p=$(validate)
+if [ "$p" != "OK" ]; then
+    echo $p
+    exit
+fi
+
+cluster=$(validate_cluster_id)
+if [ "$cluster" != "OK" ]; then
+    echo $cluster
+    exit
+fi
+
+if [ -e "$NINE_CLOUD_CLUSTER-cluster" ]; then
+    cd $NINE_CLOUD_CLUSTER-cluster
+    kc cluster-info
+else
+    echo ERROR: NO CLUSTER ASSET FOUND
+    echo Please init by running kube-aws init
+fi

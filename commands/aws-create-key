@@ -1,0 +1,14 @@
+source $NINE_CLOUD_ROOT/lib/validate
+
+p=$(validate)
+if [ "$p" != "OK" ]; then
+    echo $p
+    exit
+fi
+
+mkdir -p keys
+cd keys
+
+# Generate and Import developer key
+openssl genrsa -out "$NINE_CLOUD_ACCOUNT_ID"-ncloud.pem 2048
+openssl rsa -in "$NINE_CLOUD_ACCOUNT_ID"-ncloud.pem -pubout > "$NINE_CLOUD_ACCOUNT_ID"-ncloud.pub

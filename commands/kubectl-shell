@@ -1,0 +1,24 @@
+source $NINE_CLOUD_ROOT/lib/ninecloud
+
+PATH=$PATH:$NINE_CLOUD_ROOT/commands:/root/commands
+
+commands=`ls -1 $NINE_CLOUD_ROOT/commands/ | grep kubectl | cut -d- -f2`
+for var in $commands; do
+    alias $var=commands/kubectl-$var
+done
+alias help="kubectl help"
+
+config() {
+    source $NINE_CLOUD_ROOT/lib/config
+}
+
+if [ "$NINE_CLOUD_CLUSTER_ID" == "" ]; then
+    echo -n 'NINE_CLOUD_CLUSTER_ID? '
+    read a
+    export NINE_CLOUD_CLUSTER_ID=$a
+    export KUBECONFIG=$NINE_CLOUD_ASSETS/$NINE_CLOUD_CLUSTER_ID/kubeconfig
+fi
+
+PS1="ncloud:kubectl $(cluster_id)$ "
+
+cd $(cluster_folder)

@@ -1,0 +1,48 @@
+config() {
+    source lib/config
+}
+
+case "$1" in
+    aws)
+        bash --rcfile commands/aws-shell
+        ;;
+    kube-aws)
+        bash --rcfile commands/kube-aws-shell
+        ;;
+    kubectl)
+        bash --rcfile commands/kubectl-shell
+        ;;
+    docker)
+        shift
+        vcommand="$@"
+        bash --rcfile lib/docker-init -ci "$vcommand"
+        ;;
+    ncloud)
+        if [ "$2" != "" ]; then
+            eval "bash --rcfile commands/nine-cloud-shell -ci ${@:2}"
+        else
+            bash --rcfile commands/nine-cloud-shell
+        fi
+        ;;
+    run)
+       shift
+        if [ "$SHELL_PREINIT" != "" ]; then
+          if [ "$1" != "" ]; then
+              vcommand="$@"
+              bash --rcfile ./ncloud -ci "$SHELL_PREINIT; $vcommand"
+          else
+             echo "Unsupported"
+          fi
+        else
+          if [ "$1" != "" ]; then
+              eval "bash --rcfile ./ncloud -ci $@"
+          else
+              exec bash --rcfile ./ncshell
+  #            exec bash --rcfile commands/nine-cloud-shell
+          fi
+        fi
+        ;;
+    *)
+        echo "Usage:  {aws|kube-aws|kubectl|docker|ncloud|run}"
+        ;;
+esac

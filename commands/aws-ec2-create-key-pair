@@ -1,0 +1,17 @@
+source lib/validate
+
+KEY_DIR="${1:-"$HOME/.ssh"}"
+KEY="${2:-$NINE_CLOUD_ACCOUNT_ID-ncloud.pem}"
+
+# http://docs.aws.amazon.com/cli/latest/userguide/cli-ec2-keypairs.html
+# aws ec2 create-key-pair --key-name MyKeyPair --query 'KeyMaterial' --output text | out-file -encoding ascii -filepath MyKeyPair.pem
+
+#aws ec2 create-key-pair --key-name $KEY --dry-run
+
+if [ ! -a "$KEY_DIR/$KEY" ]; then
+    aws ec2 create-key-pair --key-name $KEY --query 'KeyMaterial' --output text > "$KEY_DIR/$KEY"
+    chmod 400 $KEY_DIR/$KEY
+    echo "KEY $KEY created"
+else
+    echo "KEY $KEY already exists"
+fi

@@ -1,0 +1,352 @@
+source $NINE_CLOUD_ROOT/lib/utils
+
+NINE_CLOUD_NAME=ncloud
+NINE_CLOUD_CONTROL_ROOT=/home/ncloud # default ncloud home path in control docker image
+# NINE_CLOUD_REGISTRY=registry.9space.io # custom registry domain not supported
+NINE_CLOUD_REGISTRY=313613391482.dkr.ecr.ap-southeast-2.amazonaws.com
+NINE_CLOUD_DOCKER_IMAGE=ncloud/$NINE_CLOUD_NAME:$NINE_CLOUD_IMAGE_VERSION
+
+LOCAL_NINE_CLOUD_IMAGE=$NINE_CLOUD_NAME:$NINE_CLOUD_IMAGE_VERSION
+NINE_CLOUD_IMAGE=$LOCAL_NINE_CLOUD_IMAGE
+if [ "$AWS_ACCOUNT_ID" != "" ]; then
+    REMOTE_NINE_CLOUD_IMAGE=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NINE_CLOUD_NAME:$NINE_CLOUD_VERSION
+fi
+
+#NINE_CLOUD_IMAGE="${REMOTE_NINE_CLOUD_IMAGE:-$LOCAL_NINE_CLOUD_IMAGE}"
+NINE_CLOUD_IMAGE=$NINE_CLOUD_DOCKER_IMAGE
+#echo "Nine Cloud Image: $NINE_CLOUD_IMAGE"
+NINE_CLOUD_CONTAINER=$NINE_CLOUD_ACCOUNT_ID-$NINE_CLOUD_NAME
+
+has_docker_machine() {
+    _check=$(docker-machine 2>/dev/null)
+    if [ $? -eq 0 ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+load_docker_machine() {
+    _check=$(docker-machine 2>/dev/null)
+    if [ $? -eq 0 ]; then
+        eval "$(docker-machine env default)"
+        return 0
+    else
+        return 1
+    fi
+}
+
+has_docker_compose() {
+    docker-compose version 2>/dev/null > /dev/null
+    a=$?
+    if [ $a -eq 0 ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+has_image() {
+    image="${1:-$NINE_CLOUD_NAME}"
+    echo $image
+
+    if `docker ps | grep -iq $image`; then
+        return 0
+    elif [ "`docker images -q $image`" != "" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+has_ncloud_image() {
+    #image="${1:-$NINE_CLOUD_REGISTRY/$NINE_CLOUD_NAME:$NINE_CLOUD_VERSION}"
+    image="${1:-$NINE_CLOUD_DOCKER_IMAGE}"
+    echo $image
+
+    if `docker ps | grep -iq $image`; then
+        return 0
+    elif [ "`docker images -q $image`" != "" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+download_ncloud_image() {
+    #image="${1:-$NINE_CLOUD_REGISTRY/$NINE_CLOUD_NAME:$NINE_CLOUD_VERSION}"
+    image="${1:-$NINE_CLOUD_DOCKER_IMAGE}"
+    _check=`confirm "Would you like to download the image: $image? [y/N]"`
+
+    if [ "$_check" == "Y" ]; then
+        docker pull $image
+        return $?
+    else
+        return 1
+    fi
+}
+
+download_image() {
+    image="${1:-AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/nine-cloud:$NINE_CLOUD_VERSION}"
+    _check=`confirm "Would you like to download the image: $image? [y/N]"`
+
+    if [ "$_check" == "Y" ]; then
+        # must log into AWS ec2 first
+        aws-ecr-login
+        image=`aws-ecr-list-images -q nine-cloud`
+        if [ "$image" == "Y" ]; then
+            image=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/nine-cloud:$NINE_CLOUD_VERSION
+            docker pull $image
+            return $?
+        else
+            return 1
+        fi
+    else
+        return 1
+    fi
+}
+
+map_cmd() {
+    case $1 in
+        "aws"|"kubectl"|"kube-aws"|"helm")
+            echo $NINE_CLOUD_IMAGE
+        ;;
+        "make"|"bash")
+            echo $NINE_CLOUD_IMAGE
+        ;;
+        "ls")
+            echo node:4
+        ;;
+        "jq")
+            echo $NINE_CLOUD_IMAGE
+        ;;
+        "node")
+            #echo node:4
+            echo node:6.7.0
+        ;;
+        "npm")
+            #echo node:4
+            echo node:6.7.0
+        ;;
+        *)
+        ;;
+    esac
+}
+
+cmd() {
+    # check for local commands
+    if cmd1=`which $1 2>/dev/null 1>/dev/null >/dev/null`; then
+        $@
+    else
+        docker_cmd $@
+    fi
+}
+
+docker_cmd() {
+    map_image=$(map_cmd $1)
+    if [ "$map_image" != "" ]; then
+        docker run \
+            -i \
+            --rm=true \
+            -e NINE_CLOUD_ROOT=$NINE_CLOUD_CONTROL_ROOT \
+            -e NINE_CLOUD_ASSETS=/assets \
+            -e NINE_CLOUD_VERSION=$NINE_CLOUD_VERSION \
+            -v "$PWD:/root" \
+            -v "$NINE_CLOUD_ASSETS:/assets" \
+            -w "/root" \
+            $map_image "$@"
+    else
+        echo Command $1 not found locally or dockerly
+    fi
+}
+
+run() {
+    # check for local commands
+    path=`which $1`
+    if cmd1=`which $1 2>/dev/null 1>/dev/null >/dev/null`; then
+        if [[ $path == *"commands"* ]]; then
+            docker_exec $@
+        else
+            $@
+        fi
+    else
+        docker_exec $@
+    fi
+}
+
+docker_exec() {
+    COMMAND=$1
+    args="${@:2}"
+    map_image=$(map_cmd $COMMAND)
+    source_path="${SOURCE:-$PWD}"
+    target_path="${TARGET:-/root}"
+    if [ "$SOURCE_PORT" != "" ]; then
+        source_port="${SOURCE_PORT}"
+        target_port="${TARGET_PORT:-$source_port}"
+        ports="-p $source_port:$target_port"
+    fi
+    if [ "$map_image" != "" ]; then
+        cmd="docker run \
+            -i \
+            --rm=true \
+            -e NINE_CLOUD_ROOT=$NINE_CLOUD_CONTROL_ROOT \
+            -e NINE_CLOUD_VERSION=$NINE_CLOUD_VERSION \
+            -v $NINE_CLOUD_ROOT:$NINE_CLOUD_CONTROL_ROOT \
+            -v $source_path:$target_path \
+            -w $target_path \
+            $ports \
+            --entrypoint $COMMAND \
+            $map_image $args"
+         #echo "DOCKER EXEC:" $cmd
+#echo $cmd
+         $cmd
+    else
+        echo Command $1 not found locally or dockerly
+    fi
+}
+
+docker_run() {
+    has_ncloud_image
+    if [ $? -eq 1 ]; then
+        download_ncloud_image 
+        if [ $? -eq 1 ]; then
+            echo No image available
+            return 1
+        fi
+    fi
+
+    if [ $? -eq 0 ]; then
+        #has_docker_compose
+        #if [ $? -eq 0 ]; then
+            #docker-compose run $@
+        #else
+            ctl $@
+        #fi
+    else
+        echo Cannot find Nine Cloud image
+    fi
+}
+
+docker_start() {
+        echo docker run \
+                         -d -P \
+                         -e NINE_CLOUD_ROOT=$NINE_CLOUD_CONTROL_ROOT \
+                         -e NINE_CLOUD_ACCOUNT_ID=$NINE_CLOUD_ACCOUNT_ID \
+                         -e NINE_CLOUD_ACCESS_TOKEN=$NINE_CLOUD_ACCESS_TOKEN \
+                         -e NINE_CLOUD_ASSETS=/assets \
+                         -e NINE_CLOUD_CLUSTER_ID=$NINE_CLOUD_CLUSTER_ID \
+                         -e NINE_CLOUD_VERSION=$NINE_CLOUD_VERSION \
+                         -e AWS_ACCOUNT_ID=$AWS_ACCOUNT_ID \
+                         -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
+                         -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
+                         -e AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION \
+                         -e GITLAB_API_ENDPOINT=$GITLAB_API_ENDPOINT \
+                         -e GITLAB_API_PRIVATE_TOKEN=$GITLAB_API_PRIVATE_TOKEN \
+                         -e GITLAB_API_HTTPARTY_OPTIONS="{verify: false}" \
+                         -p 8001:8001 \
+                         -v "$NINE_CLOUD_ROOT:$NINE_CLOUD_CONTROL_ROOT" \
+                         -v "$NINE_CLOUD_ASSETS:/assets" \
+                         -v "$NINE_CLOUD_CLUSTER:$NINE_CLOUD_CONTROL_ROOT/assets" \
+                         -v "$PWD:/root" \
+                         -w "/root" \
+                         --name=$NINE_CLOUD_CONTAINER \
+                         $NINE_CLOUD_IMAGE python -m http.server 80
+}
+
+docker_stop() {
+    docker rm -vf $NINE_CLOUD_CONTAINER
+}
+
+docker_bash() {
+    if [ "$NINE_CLOUD_DOCKER" == "true" ]; then
+        $@
+    else
+        docker_start
+        docker exec -it $NINE_CLOUD_CONTAINER bash --rcfile "$NINE_CLOUD_CONTROL_ROOT/.bashrc"
+    fi
+}
+
+# Nine Cloud Client - set env
+ctl() {
+    if [ "$NINE_CLOUD_DOCKER" == "true" ]; then
+        $@
+    else
+        arg=$(echo $@)
+        if [ "$SOURCE_PORT" != "" ]; then
+            source_port="${SOURCE_PORT}"
+            target_port="${TARGET_PORT:-$source_port}"
+            ports="-p $source_port:$target_port"
+        fi
+        docker run \
+                         -it \
+                         -e NINE_CLOUD_ROOT=$NINE_CLOUD_CONTROL_ROOT \
+                         -e NINE_CLOUD_ACCOUNT_ID=$NINE_CLOUD_ACCOUNT_ID \
+                         -e NINE_CLOUD_ACCESS_TOKEN=$NINE_CLOUD_ACCESS_TOKEN \
+                         -e NINE_CLOUD_ASSETS=/assets \
+                         -e NINE_CLOUD_CLUSTER_ID=$NINE_CLOUD_CLUSTER_ID \
+                         -e NINE_CLOUD_VERSION=$NINE_CLOUD_VERSION \
+                         -e AWS_ACCOUNT_ID=$AWS_ACCOUNT_ID \
+                         -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
+                         -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
+                         -e AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION \
+                         -e SHELL_PREINIT="source $NINE_CLOUD_CONTROL_ROOT/lib/docker-init" \
+                         -e GITLAB_API_ENDPOINT="$GITLAB_API_ENDPOINT" \
+                         -e GITLAB_API_PRIVATE_TOKEN="$GITLAB_API_PRIVATE_TOKEN" \
+                         -e GITLAB_API_HTTPARTY_OPTIONS="{verify: false}" \
+                         -v "$NINE_CLOUD_ROOT:$NINE_CLOUD_CONTROL_ROOT" \
+                         -v "$NINE_CLOUD_ASSETS:/assets" \
+                         -v "$NINE_CLOUD_CLUSTER:$NINE_CLOUD_CONTROL_ROOT/assets" \
+                         -v "$PWD:/root" \
+                         --privileged \
+                         -w "/root" \
+                         $ports \
+                         --rm=true \
+                         $NINE_CLOUD_IMAGE $arg
+    fi
+}
+
+ctl2() {
+    if [ "$NINE_CLOUD_DOCKER" == "true" ]; then
+        $@
+    else
+        arg=$(echo $@)
+        if [ "$SOURCE_PORT" != "" ]; then
+            source_port="${SOURCE_PORT}"
+            target_port="${TARGET_PORT:-$source_port}"
+            ports="-p $source_port:$target_port"
+        fi
+        docker run \
+                         -it \
+                         -e NINE_CLOUD_ROOT=$NINE_CLOUD_CONTROL_ROOT \
+                         -e NINE_CLOUD_ACCOUNT_ID=$NINE_CLOUD_ACCOUNT_ID \
+                         -e NINE_CLOUD_ACCESS_TOKEN=$NINE_CLOUD_ACCESS_TOKEN \
+                         -e NINE_CLOUD_ASSETS=/assets \
+                         -e NINE_CLOUD_CLUSTER_ID=$NINE_CLOUD_CLUSTER_ID \
+                         -e NINE_CLOUD_VERSION=$NINE_CLOUD_VERSION \
+                         -e AWS_ACCOUNT_ID=$AWS_ACCOUNT_ID \
+                         -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
+                         -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
+                         -e AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION \
+                         -e SHELL_PREINIT="source $NINE_CLOUD_CONTROL_ROOT/lib/docker-init;" \
+                         -e GITLAB_API_ENDPOINT=$GITLAB_API_ENDPOINT \
+                         -e GITLAB_API_PRIVATE_TOKEN=$GITLAB_API_PRIVATE_TOKEN \
+                         -e GITLAB_API_HTTPARTY_OPTIONS="{verify: false}" \
+                         -v "$NINE_CLOUD_ROOT:$NINE_CLOUD_CONTROL_ROOT" \
+                         -v "$NINE_CLOUD_ASSETS:/assets" \
+                         -v "$NINE_CLOUD_CLUSTER:$NINE_CLOUD_CONTROL_ROOT/assets" \
+                         -v "$PWD:/root" \
+                         --privileged \
+                         -w "/root" \
+                         $ports \
+                         --rm=true \
+                         $NINE_CLOUD_IMAGE $arg
+    fi
+}
+
+docker_aws() {
+    if [ "$NINE_CLOUD_DOCKER" == "true" ]; then
+        $@
+    else
+        ctl aws $@
+    fi
+}

@@ -1,0 +1,28 @@
+source $NINE_CLOUD_ROOT/lib/config
+source $NINE_CLOUD_ROOT/lib/validate
+source $NINE_CLOUD_ROOT/lib/docker
+
+echo Running release $@
+p=$(validate_shell)
+if [ "$p" != "OK" ]; then
+    echo $p
+echo should fail
+    exit 2
+fi
+
+source $NINE_CLOUD_ROOT/lib/release
+
+p=$(validate_release)
+if [ "$p" != "OK" ]; then
+    echo $p
+echo should fail 2
+    exit 2
+fi
+
+if [ "$2" != "" ]; then
+    export NINE_CLOUD_TARGET_DOCKERFILE=$2
+fi
+
+if [ "$1" != "" ]; then
+    release_run $1
+fi

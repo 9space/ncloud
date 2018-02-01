@@ -1,0 +1,4 @@
+NINE_CLOUD_CLUSTER_WORKER_GROUP=${NINE_CLOUD_CLUSTER_WORKER_GROUP:-$2}
+echo $NINE_CLOUD_CLUSTER_WORKER_GROUP
+#aws ec2 describe-instances | jq '.Reservations[].Instances[].InstanceId,.Reservations[].Instances[].State'
+aws ec2 describe-instances | jq -f /home/ncloud/lib/filters/aws-instances-list.jq

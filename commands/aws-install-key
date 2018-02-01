@@ -1,0 +1,22 @@
+source lib/validate
+
+p=$(validate)
+if [ "$p" != "OK" ]; then
+    echo $p
+    exit
+fi
+
+KEY_DIR="${1:-"$HOME/.ssh"}"
+KEY="${2:-$NINE_CLOUD_ACCOUNT_ID-ncloud.pub}"
+
+if [ ! -d "$KEY_DIR" ]; then
+    echo Key dir $KEY_DIR NOT FOUND
+elif [ -a $KEY_DIR/$KEY ]; then
+    cd $KEY_DIR
+    PUB_KEY=`sed '/---/d' "$KEY" | tr -d '\n'`
+    echo aws ec2 import-key-pair --key-name $KEY--public-key-material $PUB_KEY
+else
+    echo Key $KEY NOT FOUND
+    echo Run:
+    echo kube-aws-create-key
+fi

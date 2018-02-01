@@ -1,0 +1,24 @@
+help() {
+cat <<"EOF"
+Nine Cloud Shell
+
+NAME
+	ncloud -
+
+DESCRIPTION
+	The Nine Cloud Command Line Interfae is a unified tool to manage your software and Nine Cloud services.
+
+SYNOPSIS
+	ncloud [options] <command> <subcommand> [parameters]
+
+	Use ncloud command help for information on a specific command
+
+OPTIONS
+	-s | --silent
+	-d | --debug
+        shell
+        run
+        reload
+EOF
+
+}

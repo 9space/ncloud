@@ -1,0 +1,2 @@
+export HELM_HOME=/some/path
+helm init --client-only

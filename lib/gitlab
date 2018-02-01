@@ -1,0 +1,23 @@
+source $NINE_CLOUD_ROOT/lib/docker
+
+gitlab_load() {
+    export GITLAB_API_PRIVATE_TOKEN=$NINE_CLOUD_ACCESS_TOKEN
+    export GITLAB_API_ENDPOINT=https://git.9space.io/api/v3
+}
+
+gitlab_user() {
+    user=$(ctl gitlab user --only=id,username,email,private_token | sed 1,5d | sed '$d' | sed -e "s/ *//g")
+    echo $user
+}
+
+gitlab_name() {
+    echo $1 | cut -d"|" -f5
+}
+
+gitlab_private_token() {
+    echo $1 | cut -d"|" -f4
+}
+
+gitlab_email() {
+    echo $1 | cut -d"|" -f2
+}

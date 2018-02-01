@@ -1,0 +1,91 @@
+source $NINE_CLOUD_ROOT/lib/ninecloud
+source $NINE_CLOUD_ROOT/lib/config
+
+node="cmd node"
+
+if [ -e ".release.env" ]; then
+    echo Loading configuration from .release.env
+    source ${PWD}/.release.env
+else
+    # Generate config and save
+    export NINE_CLOUD_CLUSTER_ID=$NINE_CLOUD_CLUSTER_ID
+    echo -n .
+    #export NINE_CLOUD_TARGET_IMAGE=$(basename `pwd`)
+#    export NINE_CLOUD_TARGET_IMAGE=$(cmd jq ".name" package.json)
+    export NINE_CLOUD_TARGET_IMAGE=$(cmd node -p "require('./package.json').name")
+    echo -n .
+    export NINE_CLOUD_TARGET_VERSION=$(cmd node -p "require('./package.json').version")
+    echo -n .
+    export NINE_CLOUD_TARGET_IMAGE_VERSION=$(cmd node -p "require('./package.json').version")
+    echo -n .
+    export NINE_CLOUD_TARGET_APP=$(cmd node -p "require('./package.json').name")
+    echo -n .
+    export NINE_CLOUD_TARGET_SERVICE=$(basename `pwd`)
+    echo -n .
+    export NINE_CLOUD_TARGET_SERVICE_TYPE=$(cmd node -p "require('./package.json').config.service_type || 'ClusterIP'")
+    echo -n .
+    export NINE_CLOUD_TARGET_PORT=$(cmd node -p "require('./package.json').config.port || ''")
+    echo -n .
+    export NINE_CLOUD_TARGET_TIER=$(cmd node -p "require('./package.json').config.tier || ''")
+    echo -n .
+    export NINE_CLOUD_TARGET_REPLICAS=$(cmd node -p "require('./package.json').config.replicas || ''")
+    echo 
+    # save variables locally
+
+    config -q | sed -e "s/^/export /g" > .release.env
+fi
+
+store() {
+    export ${1}="${*:2}"
+    [[ ${STORED} =~ "(^| )${1}($| )" ]] || STORED="${STORED} ${1}"
+}
+
+store DOCKER_FILE ${NINE_CLOUD_TARGET_DOCKERFILE:-Dockerfile}
+store DOCKER_REPO $NINE_CLOUD_TARGET_IMAGE
+store DOCKER_TAG $NINE_CLOUD_TARGET_IMAGE_VERSION
+
+store VERSION $NINE_CLOUD_TARGET_IMAGE_VERSION
+store SERVICE $NINE_CLOUD_TARGET_SERVICE
+store SERVICE_TYPE $NINE_CLOUD_TARGET_SERVICE_TYPE
+store APP $NINE_CLOUD_TARGET_APP
+store PORT $NINE_CLOUD_TARGET_PORT
+store TIER $NINE_CLOUD_TARGET_TIER
+store REPLICAS $NINE_CLOUD_TARGET_REPLICAS
+
+store WORKING_DIR `pwd`
+
+store DOCKER_IMAGE_URL $AWS_ECR_DOMAIN/$DOCKER_REPO
+
+# Change to assets directory as this will be the /assets on nine cloud client.
+# Below paths are relative to current
+
+store ASSET_DIR /home/core/src/nine-cloud-assets/kube-aws/$NINE_CLOUD_CLUSTER_ID
+store TEMPLATES_DIR $NINE_CLOUD_ASSETS/templates
+store DEPLOY_DIR $ASSET_DIR/deploy
+
+store ECR_TEMPLATE $TEMPLATES_DIR/configuration/ecr.yaml
+store ECR_CONFIG $DEPLOY_DIR/ecr.yaml
+
+store SERVICE_TEMPLATE $TEMPLATES_DIR/configuration/myservice.yaml
+store SERVICE_FILE $SERVICE-service.yaml
+store SERVICE_CONFIG $DEPLOY_DIR/$SERVICE_FILE
+
+store DEPLOYMENT_TEMPLATE $TEMPLATES_DIR/configuration/myapp-deployment.yaml
+store DEPLOYMENT_CONFIG $DEPLOY_DIR/$SERVICE-deployment.yaml
+
+local_repo() {
+    echo $DOCKER_REPO
+}
+
+check() {
+        config
+        echo
+	echo \# =============================
+        echo \# RELEASE ENVIRONMENT VARIABLES
+        echo \# Available for current script
+	echo \# =============================
+        echo
+        for i in `echo ${STORED} | tr "" "\n" | tr " " "\n" | sort -g`; do
+            echo "${i}=${!i}"
+        done
+}

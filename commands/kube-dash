@@ -1,0 +1,9 @@
+source $NINE_CLOUD_ROOT/lib/validate
+source $NINE_CLOUD_ROOT/lib/kubectl
+
+#https://groups.google.com/forum/#!topic/kubernetes-dev/dCRR2wjrwt0
+
+#kc create -f https://rawgit.com/kubernetes/dashboard/master/src/deploy/kubernetes-dashboard.yaml
+export SOURCE_PORT=28001
+export TARGET_PORT=28001
+kc proxy

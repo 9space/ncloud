@@ -1,0 +1,3 @@
+commands() {
+    ls -C $NINE_CLOUD_ROOT/commands
+}

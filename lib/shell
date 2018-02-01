@@ -1,0 +1,6 @@
+finish () {
+    echo Exiting $(echo $PS1 | sed -e "s/.*-\(shell.*\) >/\1/g")
+    exit 1
+}
+
+trap finish EXIT

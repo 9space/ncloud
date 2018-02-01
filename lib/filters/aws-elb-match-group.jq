@@ -1,0 +1,1 @@
+.[] | map(select(.SourceSecurityGroup.GroupName | contains($a))) | .[0] | { CanonicalHostedZoneNameID: .CanonicalHostedZoneNameID, Instances: .Instances, DNSName: .DNSName, LoadBalancerName: .LoadBalancerName }

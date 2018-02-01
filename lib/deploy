@@ -1,0 +1,7 @@
+deploy() {
+    cd $NINE_CLOUD_ASSETS/deploy
+}
+
+cluster_deploy() {
+    cd $NINE_CLOUD_CLUSTER/deploy
+}

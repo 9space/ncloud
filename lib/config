@@ -1,0 +1,36 @@
+#!/bin/bash
+
+get_config() {
+    if [ "$1" != "-q" ]; then
+    echo
+    echo \# ============================
+    echo \# CONFIG ENVIRONMENT VARIABLES
+    echo \# Available for current shell
+    echo \# $PS1 | sed -e "s/ \$//g"
+    echo \#
+    echo \# config add NAME VALUE
+    echo \#
+    echo \# Example:
+    echo \# config add NINE_CLOUD_CLUSTER sample-cluster
+    echo \# ============================
+    echo \#
+    fi
+    env | sort | grep -E "(AWS|NINE|GITLAB)"
+}
+
+add_config() {
+    export $1=$2
+}
+
+config() {
+    get_config $1
+}
+
+case "$1" in
+    add)
+        add_config $2 $3
+        ;;
+    *)
+#        get_config
+        ;;
+esac

@@ -1,0 +1,335 @@
+export CLICOLOR=1
+
+if [ "$NINE_CLOUD_DEBUG" != "" ]; then
+    echo ncloud:debug NCLOUD_INIT
+fi
+
+PATH=/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin:$PWD:$PWD/commands:$PWD/workflows
+
+NINE_CLOUD_CONFIG_DIR=~/.ncloud
+export NINE_CLOUD_CONFIG_DIR=$NINE_CLOUD_CONFIG_DIR
+export NINE_CLOUD_DOMAIN=${NINE_CLOUD_DOMAIN:-9space.io}
+
+if [ "$NINE_CLOUD_ROOT" == "" ]; then
+    is_link=$(readlink $0)
+    if [ "$is_link" != "" ]; then
+        export NINE_CLOUD_ROOT=`dirname $(readlink $0)`
+    else
+        export NINE_CLOUD_ROOT=`dirname $0`
+        if [ "$NINE_CLOUD_ROOT" == "." ]; then
+            export NINE_CLOUD_ROOT=$(pwd)
+        fi
+    fi
+fi
+
+for i in `cat $NINE_CLOUD_ROOT/lib/version`; do
+    if [ "`env | grep $i`" == "" ]; then
+        eval "export $i"
+    fi
+done
+
+if [ "$NINE_CLOUD_WORKSPACE" == "" ]; then
+    export NINE_CLOUD_WORKSPACE=$PWD
+fi
+
+if [ "$NINE_CLOUD_WORKSPACE" != "" ]; then
+    cd "$NINE_CLOUD_WORKSPACE"
+fi
+
+# Default assets in current dir
+if [ "$NINE_CLOUD_ASSETS" == "" ]; then
+    export NINE_CLOUD_ASSETS=$PWD/nine-cloud-assets
+fi
+
+#PIDFILE=
+
+source $NINE_CLOUD_ROOT/lib/ninecloud
+source $NINE_CLOUD_ROOT/lib/config
+
+load_config() {
+    if [ "$NINE_CLOUD_CONFIG" != "" ]; then
+        print "Config file: $NINE_CLOUD_CONFIG"
+    fi
+}
+
+switch() {
+    if [ -f "$NINE_CLOUD_CONFIG_DIR/$1" ]; then
+        NINE_CLOUD_CONFIG=$NINE_CLOUD_CONFIG_DIR/$1
+        export NINE_CLOUD_CONFIG=$NINE_CLOUD_CONFIG
+        $NINE_CLOUD_ROOT/ncloud reload 
+    else
+        print Config $NINE_CLOUD_CONFIG_DIR/$1 not found
+    fi
+}
+
+check() {
+     has_docker_machine # Mac
+     if [ $? -eq 0 ]; then
+       dm_status=$(docker-machine status 2>/dev/null)
+       if [ "$dm_status" == "Stopped" ]; then
+           print "Seems like your docker is not running"
+           print "Please boot up your docker environment first"
+           print "If you are a Mac user run:"
+           print "$0 start"
+           return 1
+       fi
+     fi
+
+     dk_status=`docker ps 2>/dev/null`
+     if [ $? -eq 0 ]; then
+       print "Detected running docker"
+       return 0
+     else
+       print "Seems like your docker is not running"
+       print "Please boot up your docker environment first"
+       print "If you are a Mac user run:"
+       print "$0 start"
+       return 1
+     fi
+}
+
+start() {
+        check
+        if [ $? -eq 0 ]; then
+            has_docker_machine # Mac
+            if [ $? -eq 0 ]; then
+ 	        print "Booking docker machine, please wait..."
+                docker-machine start default
+                eval "$(docker-machine env default)"
+                docker-machine env default
+            else
+                print Please check and ensure docker service is running
+            fi
+            docker_start
+        else
+            has_docker_machine # Mac
+            if [ $? -eq 0 ]; then
+ 	        print "Booking docker machine, please wait..."
+                docker-machine start default
+                eval "$(docker-machine env default)"
+                docker-machine env default
+            else
+                print Unable to start
+                print Please check and ensure docker service is running
+            fi
+        fi
+}
+
+rebuild() {
+        check
+        if [ $? -eq 0 ]; then
+            print Rebuilding Nine Cloud Client, please wait...
+            has_docker_machine # Mac
+            if [ $? -eq 0 ]; then
+                docker-machine start default
+                eval "$(docker-machine env default)"
+            fi
+            has_docker_compose
+            if [ $? -eq 0 ]; then
+                docker build -t nine-cloud .
+            else
+                docker build -t nine-cloud .
+                docker-compose rm -vf
+                docker-compose build
+            fi
+        fi
+}
+
+stop() {
+ 	print "Stopping Nine Cloud Client, please wait..."
+        has_docker_machine # Mac
+        if [ $? -eq 0 ]; then
+ 	    print "Stopping docker machine, please wait..."
+            docker-machine stop default
+        fi
+        docker_stop
+}
+
+version() {
+        echo Nine Cloud:
+        echo " Version:          $NINE_CLOUD_VERSION"
+        echo " Shell Version:    $NINE_CLOUD_SHELL_VERSION"
+        echo " Image Version:    $NINE_CLOUD_IMAGE_VERSION"
+        echo
+        echo "Docker"
+        echo " Version:    "$(docker-machine --version | cut -d" " -f3 | sed -e "s/,//g")
+        echo " Build:      "$(docker-machine --version | cut -d" " -f5 | sed -e "s/,//g")
+        status=`docker ps | grep nine-cloud`
+        echo
+        echo "Nine Cloud Client"
+        echo "  OS:        "$(ctl uname -a)
+        echo "  aws:       "$(ctl aws --version)
+        echo "  kube-aws:  "$(ctl kube-aws version | sed -e "s/kube-aws version //g")
+        echo "  kubectl:   "$(ctl kubectl version)
+        echo "  git:       "$(ctl git version | sed -e "s/git version //g")
+        echo "  gitlab:    "$(ctl gitlab --version)
+        echo "  node:       "$(ctl node --version)
+}
+
+status() {
+        echo Docker:
+        echo " Detected running docker"
+        echo " Settings:"
+        docker-machine env default | sed -e "s/export /  /g" | grep -v "#"
+        echo
+        echo Nine Cloud Client:
+        status=`docker ps | grep nine-cloud`
+        if [ $? -eq 0 ]; then
+            echo " Running"
+        else
+            echo " Not running"
+        fi
+        echo " Available client images:"
+        docker images | grep nine-cloud | sed -e "s/^/  /g"
+}
+
+clean() {
+        if [ "$1" == "all" ]; then
+            docker rm -v $(docker ps -a -q)
+            docker rmi $(docker images -f "dangling=true" -q)
+        else
+            docker rm -v $(docker ps -a -q -f status=exited)
+            docker rmi $(docker images -f "dangling=true" -q)
+        fi
+}
+
+shell() {
+        debug "shell:"
+        if [ "$NINE_CLOUD_SHELL" == "" ]; then
+            has_docker_machine # Mac
+            if [ $? -eq 0 ]; then
+               load_docker_machine
+            fi
+            check
+            print
+        fi
+
+        cd $NINE_CLOUD_ROOT
+
+        if [ "$NINE_CLOUD_SHELL" == "" ]; then
+          if [ $? -eq 1 ]; then
+ 	    print "Starting Nine Cloud Shell, some commands will not be available, please wait..."
+          else
+            print "Starting Nine Cloud Shell, looking good, please wait..."
+          fi
+          print
+          printf lib/logo.txt
+          print
+          printf lib/welcome.txt
+          print
+          export NINE_CLOUD_SHELL=true
+          debug shell: in shell already
+
+          if [ "$NINE_CLOUD_DOCKER" != "" ]; then
+              echo -n Pre-flight check: 
+              has_ncloud_image
+
+              if [ $? -eq 1 ]; then
+                  echo "Nine Cloud control is not installed"
+                  download_ncloud_image
+              fi
+          fi
+          
+          if [ "$1" != "" ]; then
+             debug shell: run commands/shell $@
+             exec $NINE_CLOUD_ROOT/commands/shell $@
+          else
+             if [ -t 1 ]; then
+               debug shell: run ncshell terminal 1
+               debug NINE_CLOUD_ROOT=$NINE_CLOUD_ROOT
+               #exec bash --rcfile $NINE_CLOUD_ROOT/ncshell -i +m 2>/dev/null
+               exec bash --rcfile $NINE_CLOUD_ROOT/ncshell -i +m 
+             else 
+               debug shell: run ncshell terminal 2
+               exec bash --rcfile $NINE_CLOUD_ROOT/ncshell -i +m 2>/dev/null
+             fi
+          fi            
+        elif [ "$1" != "" ]; then
+            debug shell: run commands/shell $@
+            exec $NINE_CLOUD_ROOT/commands/shell $@
+        fi
+        if [ "$NINE_CLOUD_ACCOUNT_USER" != "" ]; then
+            print Hello $NINE_CLOUD_ACCOUNT_USER!
+        fi
+}
+
+login() {
+        check
+        if [ "$NINE_CLOUD_ACCOUNT_ID" == "" ]; then
+            echo -n "Enter your 9Space Account ID: "
+            read NINE_CLOUD_ACCOUNT_ID
+        fi
+        if [ "$NINE_CLOUD_ACCESS_TOKEN" == "" ]; then
+            echo -n "Enter your 9Space Access Token: "
+            read NINE_CLOUD_ACCESS_TOKEN
+        fi
+        if [ "$NINE_CLOUD_ACCOUNT_ID" == "" ]; then
+            echo Invalid NINE_CLOUD_ACCOUNT_ID. Login failed
+            return 0
+        fi
+        if [ "$NINE_CLOUD_ACCESS_TOKEN" == "" ]; then
+            echo Invalid NINE_CLOUD_ACCOUNT_ID. Login failed
+            return 0
+        fi
+
+        print logging in...
+
+        eval "$(docker-machine env default)"
+
+        login_res=$(ninecloud_login)
+
+        if [ "$login_res" == "FAILED" ]; then
+            print FAILED
+        else
+            print OK
+            user=$login_res
+            export NINE_CLOUD_ACCOUNT_USER=$(gitlab_name $user)
+            export NINE_CLOUD_ACCOUNT_EMAIL=$(gitlab_email $user)
+            export NINE_CLOUD_ACCOUNT_ID=$NINE_CLOUD_ACCOUNT_ID
+            export NINE_CLOUD_ACCESS_TOKEN=$NINE_CLOUD_ACCESS_TOKEN
+        fi
+        if [ "$NINE_CLOUD_SHELL" == "" ]; then
+            shell
+        fi
+}
+
+connect() {
+        check
+        if [ $? -eq 1 ]; then
+            print
+            print Unable to connect to Nine Cloud Client
+            print Please ensure docker is installed and running
+        # for older Mac OS that may use docker
+        else
+            has_docker_machine
+            if [ $? -eq 0 ]; then
+                eval "$(docker-machine env default)"
+            fi
+            docker_bash
+        fi
+}
+
+ready() {
+        print ready
+}
+
+restart() {
+        stop
+	wait_stop
+        start
+}
+
+wait_stop() {
+    end=$((SECONDS+30))
+
+    while [ $SECONDS -lt $end ]; do
+        ready
+        STAT=$?
+        if [ $STAT = 0 ]; then
+            return 0;
+        fi
+        sleep 5s
+    done
+
+    return 1;
+}

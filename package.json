@@ -1,0 +1,22 @@
+{
+  "name": "ncloud",
+  "description": "NineCloud CLI major=2 docker=0.12.2 nodejs=8.9.3 kube-aws=0.9.9 kubectl=v1.8.4 aws-cli=1.14.24",
+  "version": "2.0.1",
+  "config": {
+    "port": 80,
+    "replicas": 1,
+    "tier": "frontend",
+    "service_type": "ClusterIP"
+  },
+  "main": "index.js",
+  "scripts": {
+    "version": "cat lib/version",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://git.9space.io/open-source/ncloud.git"
+  },
+  "author": "Aaron Ng <aaron@9space.io>",
+  "license": "MIT"
+}

@@ -1,0 +1,50 @@
+cluster_id() {
+    echo $NINE_CLOUD_CLUSTER_ID
+}
+
+cluster() {
+    cd $NINE_CLOUD_CLUSTER
+}
+
+cluster_folder() {
+    cluster=$(cluster_id)
+    echo $NINE_CLOUD_ASSETS/$cluster
+}
+
+#NINE_CLOUD_CLUSTER=/Users/ming/src/ninecloud/nine-cloud-assets/ninecloud-ap-southeast-2-01
+#NINE_CLOUD_CLUSTER_DNS_NAME=ninecloud-ap-southeast-2-01.9space.io
+#NINE_CLOUD_CLUSTER_ID=ninecloud-ap-southeast-2-01
+
+cluster_list() {
+    ls -1 $NINE_CLOUD_ASSETS | grep -v .json | grep -v .git | grep -v deploy | awk '{print NR, "\t", $0}'
+}
+
+cluster_create() {
+    if [ "$1" == "" ]; then
+        echo Please specify a new cluster name
+    elif [ -d "$1" ]; then
+        echo Cluster already exists
+    else
+        mkdir $NINE_CLOUD_ASSETS/$1
+    fi
+}
+
+cluster_use() {
+    if [ "$1" == "" ]; then
+        echo No cluster provided. Available clusters
+        cluster_list
+    elif [ ! -d "$NINE_CLOUD_ASSETS/$1" ]; then
+        echo Invalid cluster. Available clusters
+        cluster_list
+    else
+        export NINE_CLOUD_CLUSTER_ID=$1
+        export NINE_CLOUD_CLUSTER_DNS_NAME=${NINE_CLOUD_CLUSTER_ID}.${NINE_CLOUD_DOMAIN}
+        export NINE_CLOUD_CLUSTER=$(cluster_folder)
+        #source $NINE_CLOUD_ROOT/ncloud
+    fi
+    prompt_update
+}
+
+if [ "$NINE_CLOUD_CLUSTER_ID" != "" ]; then
+    export NINE_CLOUD_CLUSTER=$(cluster_folder)
+fi

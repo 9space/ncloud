@@ -1,0 +1,28 @@
+source $NINE_CLOUD_ROOT/lib/cluster
+
+commands=`ls -1 $NINE_CLOUD_ROOT/commands/ | grep kube-aws | cut -d- -f3`
+for var in $commands; do
+    alias $var=commands/kube-aws-$var
+done
+alias help="kube-aws help"
+
+config() {
+    source $HOME/lib/config
+}
+
+cd $(cluster_folder)
+
+if [ "$AWS_ACCOUNT_ID" == "" ]; then
+    echo Missing AWS_ACCOUNT_ID ENV variable
+fi
+if [ "$AWS_ACCESS_KEY_ID" == "" ]; then
+    echo Missing AWS_ACCESS_KEY_ID ENV variable
+fi
+if [ "$AWS_SECRET_ACCESS_KEY" == "" ]; then
+    echo Missing AWS_SECRET_ACCESS_KEY ENV variable
+fi
+if [ "$AWS_DEFAULT_REGION" == "" ]; then
+    echo Missing AWS_DEFAULT_REGION variable
+fi
+
+PS1="ncloud:kube-aws $(cluster_id) > "

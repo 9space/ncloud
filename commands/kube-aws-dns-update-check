@@ -1,0 +1,33 @@
+source $NINE_CLOUD_ROOT/lib/validate
+source $NINE_CLOUD_ROOT/lib/kubeaws
+
+p=$(validate)
+if [ "$p" != "OK" ]; then
+    echo $p
+    exit
+fi
+
+cluster=$(validate_cluster_id)
+if [ "$cluster" != "OK" ]; then
+    echo $cluster
+    exit
+fi
+
+cd $NINE_CLOUD_CLUSTER
+
+if [ "$NINE_CLOUD_CLUSTER_END_POINT" == "" ]; then
+    NINE_CLOUD_CLUSTER_END_POINT=$(kube-aws-dns)
+    export NINE_CLOUD_CLUSTER_END_POINT=$NINE_CLOUD_CLUSTER_END_POINT
+fi
+
+echo NINE_CLOUD_CLUSTER_END_POINT is $NINE_CLOUD_CLUSTER_END_POINT
+
+while true; do
+    #echo "dig $NINE_CLOUD_CLUSTER_DNS_NAME | grep -i $NINE_CLOUD_CLUSTER_END_POINT"
+    match=$(dig $NINE_CLOUD_CLUSTER_DNS_NAME | grep -i $NINE_CLOUD_CLUSTER_END_POINT)
+    if [ "$match" != "" ]; then
+        echo "kube-aws EndPoint API is now available: $NINE_CLOUD_CLUSTER_DNS_NAME"
+        break;
+    fi
+    sleep 1;
+done

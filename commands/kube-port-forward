@@ -1,0 +1,6 @@
+source $NINE_CLOUD_ROOT/lib/validate
+source $NINE_CLOUD_ROOT/lib/kubectl
+
+export SOURCE_PORT=$2
+export TARGET_PORT=$2
+kc port-forward $1 $2:$3

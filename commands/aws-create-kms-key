@@ -1,0 +1,31 @@
+source $NINE_CLOUD_ROOT/lib/validate
+source $NINE_CLOUD_ROOT/lib/cluster
+
+p=$(validate)
+if [ "$p" != "OK" ]; then
+    echo $p
+    exit
+fi
+
+cluster=$(validate_cluster_id)
+if [ "$cluster" != "OK" ]; then
+    echo $cluster
+    exit
+fi
+
+cluster_id=$(cluster_id);
+cluster_folder=$NINE_CLOUD_ASSETS
+kms_key=$AWS_ACCOUNT_ID-kms-key.json
+
+echo $cluster_id
+echo $cluster_folder
+
+mkdir -p $cluster_folder
+cd $cluster_folder
+if [ ! -e "$cluster_folder/$kms_key" ]; then
+    aws kms create-key --description="$AWS_ACCOUNT_ID kube-aws assets" > $AWS_ACCOUNT_ID-kms-key.json
+    cat $cluster_folder/$kms_key
+else
+    echo AWS KMS KEY $kms_key already exists
+    cat $cluster_folder/$kms_key
+fi

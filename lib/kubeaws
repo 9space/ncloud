@@ -1,0 +1,54 @@
+source $NINE_CLOUD_ROOT/lib/docker
+
+ka_warning() {
+    if [ -d "$NINE_CLOUD_CLUSTER/credentials" ]; then
+        echo "Kube-aws warning: Credentials exists. Continuing could may result in your cluster being inaccessible!";
+        if [ "$(danger)" != "OK" ]; then
+            exit;
+        fi
+    elif [ -d "$NINE_CLOUD_CLUSTER/cluster.yaml" ]; then
+        echo "Kube-aws warning: Cluster already initialised. Continuing could result in your cluster being inaccessible!";
+        if [ "$(danger)" != "OK" ]; then
+            exit;
+        fi
+    else
+        echo OK
+    fi
+}
+
+status() {
+   ka status
+}
+
+ka() {
+    if [ -e "cluster.yaml" ]; then
+        export NINE_CLOUD_KUBEAWS_CONFIG=$(pwd)/cluster.yaml
+    elif [ "$1" == "init" ]; then
+        echo -n
+    elif [ "$NINE_CLOUD_KUBEAWS_CONFIG" != "" ]; then
+        if [ -e $NINE_CLOUD_KUBEAWS_CONFIG ]; then
+            echo -n
+        else
+            echo Cannot locate kube-aws config
+            return 0;
+        fi
+    elif [ "$NINE_CLOUD_CLUSTER_ID" != "" ]; then
+        file=$NINE_CLOUD_ASSETS/$NINE_CLOUD_CLUSTER_ID/cluster.yaml
+        if [ -e $file ]; then
+            export NINE_CLOUD_KUBEAWS_CONFIG=$file
+        else
+            echo Missing NINE_CLOUD_KUBEAWS_CONFIG ENV variable
+            echo Cannot locate kube-aws config
+#            return 0;
+        fi
+    else
+        echo Cannot locate kube-aws config
+#        return 0;
+    fi
+
+    if [ "$NINE_CLOUD_DOCKER" == "true" ]; then
+        /usr/local/bin/kube-aws $@
+    else
+        ctl ka $@
+    fi
+}

@@ -1,0 +1,21 @@
+source $NINE_CLOUD_ROOT/lib/validate
+
+p=$(validate)
+if [ "$p" != "OK" ]; then
+    echo $p
+    exit
+fi
+
+cluster=$(validate_cluster_id)
+if [ "$cluster" != "OK" ]; then
+    echo $cluster
+    exit
+fi
+
+cd $(cluster_folder)
+output=`kube-aws status 2>/dev/null`
+if [ "$?" != 2 ]; then
+  echo $output
+fi
+
+aws cloudformation describe-stacks

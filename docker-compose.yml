@@ -1,0 +1,19 @@
+nine-cloud:
+  image: nine-cloud:0.0.8
+  environment:
+    - AWS_ACCOUNT_ID
+    - AWS_ACCESS_KEY_ID
+    - AWS_SECRET_ACCESS_KEY
+    - AWS_DEFAULT_REGION
+    - NINE_CLOUD_ACCOUNT_ID
+    - NINE_CLOUD_ACCOUNT_NAME
+    - NINE_CLOUD_ACCOUNT_EMAIL
+    - NINE_CLOUD_ACCESS_TOKEN
+    - NINE_CLOUD_DOCKER=true
+#  ports: ["33100:3000"]
+#  image: node:4
+  volumes: [".:/home/ncloud/", "~/src/ninecloud:/data/src/"]
+  working_dir: /root/
+#  command: python3 -m http.server 8000
+  entrypoint: /home/ncloud/docker-entrypoint.sh
+#  command: [ "cd /data/src;", "config;", "ls -la;", "cd nine-db-redis;", "release build" ]

@@ -1,0 +1,115 @@
+source $NINE_CLOUD_ROOT/lib/ninecloud
+source $NINE_CLOUD_ROOT/lib/config
+source $NINE_CLOUD_ROOT/lib/project
+
+store CMD_KOMPOSE kompose
+store CMD_KC "ctl kc"
+store CMD_AWS "ctl aws"
+store CMD_LIST_REPO "ctl aws ecr list-images --region $AWS_ECR_REGION --repository-name $DOCKER_REPO"
+store CMD_FIND_REPO "$CMD_LIST_REPO 2>&1 | grep -q imageIds"
+store CMD_CREATE_REPO "ctl aws ecr create-repository --region $AWS_ECR_REGION --repository-name $DOCKER_REPO 2>&1 | grep -q exists"
+
+ecr_get_repo() {
+	echo $DOCKER_IMAGE_URL
+}
+
+ecr_list_images() {
+	$CMD_LIST_REPO
+}
+
+ecr_create_repository() {
+	if $($CMD_FIND_REPO) ; then
+	    echo "Found repository $DOCKER_REPO";
+        else
+	    if $($CMD_CREATE_REPO) ; then
+	        echo Repository exists $DOCKER_REPO;
+            else
+                echo Failed to create repository $DOCKER_REPO;
+	    fi
+	fi
+}
+
+ecr_login() {
+        echo Log in ...
+	ctl aws ecr get-login --region $AWS_ECR_REGION | sh -
+}
+
+kompose() {
+        cd $DEPLOY_DIR
+        echo $CMD_KOMPOSE -f $WORKING_DIR/docker-compose.yml convert -d -y
+}
+
+compile() {
+	sed -e "s,{{IMAGE}},$DOCKER_IMAGE_URL,g" $1 | \
+	sed -e "s,{{VERSION}},$VERSION,g" | \
+	sed -e "s,{{SERVICE}},$SERVICE,g" | \
+	sed -e "s,{{REPLICAS}},$REPLICAS,g" | \
+	sed -e "s,{{SERVICE_TYPE}},$SERVICE_TYPE,g" | \
+	sed -e "s,{{TIER}},$TIER,g" | \
+	sed -e "s,{{PORT}},$PORT,g" | \
+	sed -e "s,{{APP}},$APP,g"
+}
+
+generate() {
+        cd $NINE_CLOUD_ASSETS/..
+#        ecr_login
+#	CONFIG="$shell base64 < ~/.docker/config.json"; \
+#	  sed -e 's/{{CONFIG}}/'$$CONFIG'/g' $ECR_TEMPLATE > \
+#          $DEPLOY_DIR/ecr.yaml
+        kompose
+#	compile $SERVICE_TEMPLATE > \
+#          $SERVICE_CONFIG
+#        echo $SERVICE_CONFIG saved
+#	compile $DEPLOYMENT_TEMPLATE > \
+#          $DEPLOYMENT_CONFIG
+#        echo $DEPLOYMENT_CONFIG saved
+}
+
+install() {
+        cd $NINE_CLOUD_ASSETS/..
+        ecr_login
+	$CMD_KC create -f $DEPLOY_DIR/ecr.yaml
+#	$CMD_KC replace -f $DEPLOY_DIR/ecr.yaml
+	$CMD_KC create -f $SERVICE_CONFIG
+	$CMD_KC create -f $DEPLOYMENT_CONFIG
+	ctl aws ecr create-repository --repository-name $NINE_CLOUD_TARGET_IMAGE > $DEPLOY_DIR/$NINE_CLOUD_TARGET_IMAGE-repository.json
+}
+
+build() {
+        #cd $NINE_CLOUD_ASSETS/..
+        rm .release.env
+	docker build -f $DOCKER_FILE -t $DOCKER_REPO:$DOCKER_TAG $PWD
+}
+
+tag() {
+        #cd $NINE_CLOUD_ASSETS/..
+	docker tag $DOCKER_REPO:$DOCKER_TAG $AWS_ECR_DOMAIN/$DOCKER_REPO:$DOCKER_TAG
+}
+
+push() {
+        build
+        ecr_login
+        ecr_create_repository
+	tag
+	docker push $AWS_ECR_DOMAIN/$DOCKER_REPO:$DOCKER_TAG
+}
+
+deploy() {
+        push
+	CONFIG="$shell base64 < ~/.docker/config.json"; \
+	  sed -e 's/{{CONFIG}}/'$$CONFIG'/g' $ECR_TEMPLATE | \
+	  kubectl replace -f -
+#	sed -e 's/{{IMAGE}}/$AWS_ECR_DOMAIN\/$DOCKER_REPO:$DOCKER_TAG/g' myapp.yaml | \
+#	  kubectl replace -f -
+	kubectl rolling-update myapp --image $AWS_ECR_DOMAIN/$DOCKER_REPO:$DOCKER_TAG
+}
+
+
+replace() {
+	echo $CONFIG
+	sed -e 's/{{CONFIG}}/'$$CONFIG'/g' 'boo'
+}
+
+release_run() {
+        $1
+}

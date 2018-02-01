@@ -1,0 +1,89 @@
+source $NINE_CLOUD_ROOT/lib/docker
+
+svc() {
+    if [ "$1" != "" ]; then
+        kc describe svc $1
+    else
+        kc get svc
+    fi
+}
+
+active() {
+    svc
+    pods 
+}
+
+ncc() {
+    pods | grep nine-cloud-control
+}
+
+create() {
+    kc create -f $1
+}
+
+delete() {
+    kc delete -f $1
+}
+
+update() {
+    kc update -f $1
+}
+
+replace() {
+    kc replace -f $1
+}
+
+pods() {
+    kc get pods
+}
+
+logs() {
+    kc logs --tail=10 -f $1
+}
+
+pod() {
+    kc $1 pod $2
+}
+
+pod_exec() {
+    kc exec -it $1 ${@:2}
+}
+
+pod_shell() {
+    kc exec -it $1 $2 bash
+}
+
+ingress() {
+    kc describe svc  | grep 'LoadBalancer Ingress'
+}
+
+kc() {
+    if [ -e "kubeconfig" ]; then
+        export NINE_CLOUD_KUBECONFIG=$(pwd)/kubeconfig
+    elif [ "$NINE_CLOUD_KUBECONFIG" != "" ]; then
+        if [ -e $NINE_CLOUD_KUBECONFIG ]; then
+            echo -n
+        else
+            echo Cannot locate kubeconfig
+            return 0;
+        fi
+    elif [ "$NINE_CLOUD_CLUSTER_ID" != "" ]; then
+        file=$NINE_CLOUD_ASSETS/$NINE_CLOUD_CLUSTER_ID/kubeconfig
+        if [ -e $file ]; then
+            export NINE_CLOUD_KUBECONFIG=$file
+        else
+            echo Missing NINE_CLOUD_KUBECONFIG ENV variable
+            echo Cannot locate kubeconfig
+            return 0;
+        fi
+    else
+        echo Cannot locate kubeconfig
+        return 0;
+    fi
+
+    if [ "$NINE_CLOUD_DOCKER" == "true" ]; then
+        /usr/local/bin/kubectl --kubeconfig $NINE_CLOUD_KUBECONFIG $@
+    else
+        ctl kc $@
+    fi
+}

@@ -1,0 +1,3 @@
+source $NINE_CLOUD_ROOT/lib/docker
+
+echo aws ec2 create-volume --size 50 --region $AWS_DEFAULT_REGION --availability-zone $AWS_AVAILABILITY_ZONE --volume-type gp2

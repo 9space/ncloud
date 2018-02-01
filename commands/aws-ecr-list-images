@@ -1,0 +1,44 @@
+source $NINE_CLOUD_ROOT/lib/docker
+
+check_aws=$(aws 2>/dev/null)
+
+QUIET=""
+
+if [ "$1" == "-q" ]; then
+    REPOSITORY_NAME=$2
+    QUIET=true
+else
+    REPOSITORY_NAME=$1
+fi
+
+if [ "$?" == 1 ]; then
+    CMD="`docker_aws ecr list-images --repository-name $REPOSITORY_NAME 2>&1`"
+    if echo $CMD | grep -q image; then
+        if [ "$QUIET" == "" ]; then
+            echo $CMD
+        else
+            echo Y
+        fi
+    else
+        if [ "$QUIET" == "" ]; then
+            echo N
+        else
+            echo N
+        fi
+    fi
+else
+    CMD="`aws ecr list-images --repository-name $REPOSITORY_NAME 2>&1`"
+    if echo $CMD | grep -q image; then
+        if [ "$QUIET" == "" ]; then
+            echo $CMD
+        else
+            echo Y
+        fi
+    else
+        if [ "$QUIET" == "" ]; then
+            echo N
+        else
+            echo N
+        fi
+    fi
+fi

@@ -1,0 +1,5 @@
+NINE_CLOUD_CLUSTER_WORKER_GROUP=${NINE_CLOUD_CLUSTER_WORKER_GROUP:-$2}
+echo $NINE_CLOUD_CLUSTER_WORKER_GROUP
+#aws autoscaling update-auto-scaling-group --auto-scaling-group-name $NINE_CLOUD_CLUSTER_WORKER_GROUP --desired-capacity $1 --min-size $1 --max-size $1
+groups=`aws autoscaling describe-auto-scaling-groups | jq '.AutoScalingGroups[].AutoScalingGroupName'`
+echo $groups

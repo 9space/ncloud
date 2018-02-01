@@ -1,0 +1,161 @@
+#!/bin/bash
+# The MIT License (MIT)
+#
+# Copyright (c) 2016 9Space Pty Ltd
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+### BEGIN INIT INFO
+# Provides:          $location
+# Short-Description: This shell script takes care of starting and stopping
+#		     nine-cloud-control (the $location Control)
+# Description:       $location Control environment for building and deployment containers on AWS using Kubernetes.
+#
+#
+### END INIT INFO
+
+export CLICOLOR=1
+#export NINE_CLOUD_DEBUG=true
+
+if [ "$NINE_CLOUD_DEBUG" != "" ]; then
+    echo ncloud:debug NCLOUD
+fi
+
+if [ "$NINE_CLOUD_ROOT" == "" ]; then
+    if [ "$NINE_CLOUD_DEBUG" != "" ]; then
+        echo 'ncloud:debug $NINE_CLOUD_ROOT not set'
+    fi
+    is_link=$(readlink $0)
+    if [ "$is_link" != "" ]; then
+        export NINE_CLOUD_ROOT=`dirname $(readlink $0)`
+    else
+        export NINE_CLOUD_ROOT=`dirname $0`
+        if [ "$NINE_CLOUD_ROOT" == "." ]; then
+            export NINE_CLOUD_ROOT=$(pwd)
+        elif [ "$NINE_CLOUD_ROOT" == "./ncloud" ]; then
+            export NINE_CLOUD_ROOT=$(pwd)/ncloud
+        fi
+    fi
+    if [ "$NINE_CLOUD_DEBUG" != "" ]; then
+        echo 'ncloud:debug $NINE_CLOUD_ROOT is now '$NINE_CLOUD_ROOT
+    fi
+fi
+
+source $NINE_CLOUD_ROOT/lib/init
+
+while [[ $# -gt 0 ]]; do
+  key="$1"
+
+  case $key in
+      -d|--debug)
+          NINE_CLOUD_DEBUG="1"
+          export NINE_CLOUD_DEBUG=$NINE_CLOUD_DEBUG
+          #shift # past argument
+      ;;
+      -s|--silent)
+          NINE_CLOUD_SILENT="1"
+          export NINE_CLOUD_SILENT=$NINE_CLOUD_SILENT
+          #shift # past argument
+      ;;
+      -c|--config)
+          NINE_CLOUD_CONFIG="$2"
+          if [ -f "$NINE_CLOUD_CONFIG" ]; then
+              export NINE_CLOUD_CONFIG=$NINE_CLOUD_CONFIG
+              source $NINE_CLOUD_CONFIG
+          else
+              print "Unable to locate config file: $NINE_CLOUD_CONFIG"
+          fi
+          shift # past argument
+      ;;
+      -a|--assets)
+          if [ -f "$2" ]; then
+              print "Unable to locate assets folder: $2"
+          elif [ -e "$2" ]; then
+              export NINE_CLOUD_ASSETS=$2
+          else
+              print "Unable to locate assets folder: $2"
+          fi
+          shift # past argument
+      ;;
+      --default)
+          DEFAULT=YES
+      ;;
+      *)
+          if [ "$COMMAND" == "" ]; then
+              COMMAND=$key
+          else
+              ARGS="$ARGS $1"
+          fi
+          # unknown option
+      ;;
+  esac
+  shift # past argument or value
+done
+
+case "$COMMAND" in
+    shell)
+        debug COMMAND: shell ARGS: $ARGS
+        shell $ARGS
+        ;;
+    version)
+        version
+        ;;
+    run)
+        exec $NINE_CLOUD_ROOT/commands/shell run $ARGS
+        ;;
+    reload)
+        NINE_CLOUD_SHELL=''
+        exec $NINE_CLOUD_ROOT/ncshell --config $NINE_CLOUD_CONFIG shell
+        ;;
+    start)
+        start
+        ;;
+    rebuild)
+        rebuild
+        ;;
+    connect)
+        connect
+        ;;
+    stop)
+        stop
+        ;;
+    status)
+        status
+        ;;
+    restart)
+        stop
+	wait_stop
+        start
+        ;;
+    ready)
+	ready
+	;;
+    login)
+	login
+	;;
+    *)
+        if [ "$NINE_CLOUD_SHELL" == "" ]; then
+            print "Usage:  {shell|start|stop|status|restart|login}"
+        else
+            if [ "$NINE_CLOUD_PROJECTS" != "" ]; then
+                cd $NINE_CLOUD_PROJECTS
+            fi
+        fi
+        ;;
+esac

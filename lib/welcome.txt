@@ -1,0 +1,7 @@
+Welcome to the Nine Cloud CLI!
+
+  - Help: https://help.9space.io
+  - Code: https://github.com/9space
+  - Love: https://9space.io
+
+You have now entered a normal bash shell

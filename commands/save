@@ -1,0 +1,15 @@
+#!/bin/bash
+
+name=`basename $NINE_CLOUD_CONFIG`
+
+if [ "$NINE_CLOUD_CONFIG" != "" ]; then
+  if [ "$name" != "" ]; then
+    if [ "$NINE_CLOUD_ROOT" != "" ]; then
+      tmp=/tmp/.ncloud.install.$name
+      touch $tmp
+      echo "exec $NINE_CLOUD_ROOT/ncloud --config $NINE_CLOUD_CONFIG shell \$@" > $tmp
+      chmod 700 $tmp
+      mv -nv $tmp /usr/local/bin/$name
+    fi
+  fi
+fi

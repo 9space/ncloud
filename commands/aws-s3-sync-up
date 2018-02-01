@@ -1,0 +1,3 @@
+source $NINE_CLOUD_ROOT/lib/validate
+
+aws s3 sync $1 s3://$2/ ${*:3}

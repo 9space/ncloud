@@ -1,0 +1,24 @@
+assets-status() {
+    cd $(cluster_folder);
+    git status
+    cd
+}
+
+assets-diff() {
+    cd $(cluster_folder);
+    git diff
+    cd
+}
+
+assets-save() {
+    cd $(cluster_folder);
+    git commit
+    cd
+}
+
+assets() {
+    cd $(cluster_folder);
+    git $@
+    cd
+}
+

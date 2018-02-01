@@ -1,0 +1,50 @@
+source $NINE_CLOUD_ROOT/lib/validate
+source $NINE_CLOUD_ROOT/lib/kubeaws
+
+p=$(validate)
+if [ "$p" != "OK" ]; then
+    echo $p
+    exit
+fi
+
+cluster=$(validate_cluster_id)
+if [ "$cluster" != "OK" ]; then
+    echo $cluster
+    exit
+fi
+
+ka_warning
+
+dns_name=$(validate_external_dns_name)
+if [ "$dns_name" != "OK" ]; then
+    echo $dns_name
+    exit
+fi
+
+aws_kms_key=$(validate_aws_kms_key)
+if [ "$aws_kms_key" != "OK" ]; then
+    echo $aws_kms_key
+    exit
+fi
+
+mkdir -p $NINE_CLOUD_CLUSTER
+cd $NINE_CLOUD_CLUSTER
+echo $aws_kms_key
+kms_key=`cat $NINE_CLOUD_ASSETS/$AWS_ACCOUNT_ID-kms-key.json | grep "Arn" | cut -d\: -f2- | sed -e "s/[ ,\"]//g"`
+
+KEY_DIR="${1:-"$HOME/.ssh"}"
+KEY="${2:-$NINE_CLOUD_ACCOUNT_ID-ncloud.pem}"
+
+ka init \
+--cluster-name="$NINE_CLOUD_CLUSTER_ID" \
+--external-dns-name=$NINE_CLOUD_CLUSTER_DNS_NAME \
+--region=$AWS_DEFAULT_REGION \
+--availability-zone="$AWS_AVAILABILITY_ZONE" \
+--key-name="$KEY" \
+--kms-key-arn="$kms_key" \
+--no-record-set
+
+echo
+echo "Next steps (Nine Way):"
+echo 1. kube-aws-preflight
+echo 2. kube-aws-render

@@ -1,0 +1,8 @@
+export PATH=$PATH:/root/commands
+
+export NINE_CLOUD_DOCKER=true
+NINE_CLOUD_ROOT=/home/ncloud
+export NINE_CLOUD_ROOT=$NINE_CLOUD_ROOT
+
+source $NINE_CLOUD_ROOT/lib/config
+source $NINE_CLOUD_ROOT/lib/ninecloud

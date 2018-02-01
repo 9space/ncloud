@@ -1,0 +1,9 @@
+#NAME="elb-`date --utc +%Y%m%d%H%M%S`"
+NAME="elb-`date -u +%Y%m%d%H%M%S`"
+PRIV="`ssh a4 'sudo cat /mnt/data/letsencrypt/etc/letsencrypt/live/test.test.io/privkey.pem'`"
+CERT="`ssh a4 'sudo cat /mnt/data/letsencrypt/etc/letsencrypt/live/test.test.io/cert.pem'`"
+CHAIN="`ssh a4 'sudo cat /mnt/data/letsencrypt/etc/letsencrypt/live/test.test.io/chain.pem'`"
+aws --profile test iam upload-server-certificate --server-certificate-name "$NAME" --certificate-body "$CERT" --private-key "$PRIV" --certificate-chain "$CHAIN" &&
+sleep 5 &&
+aws --profile test elb set-load-balancer-listener-ssl-certificate --load-balancer-name default --load-balancer-port 443 --ssl-certificate-id arn:aws:iam::xxx:server-certificate/"$NAME"
+aws --profile test elb set-load-balancer-listener-ssl-certificate --load-balancer-name IWS --load-balancer-port 443 --ssl-certificate-id arn:aws:iam::xxx:server-certificate/"$NAME"

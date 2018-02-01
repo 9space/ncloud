@@ -1,0 +1,106 @@
+debug() {
+  if [ "$NINE_CLOUD_DEBUG" != "" ]; then
+    echo ncloud:debug: $@
+  fi
+}
+
+print() {
+   if [ "$NINE_CLOUD_SILENT" == "" ]; then
+     echo $@
+   fi
+}
+
+printf() {
+   if [ "$NINE_CLOUD_SILENT" == "" ]; then
+     cat $1
+   fi
+}
+
+poll() {
+    while true; do 
+#      clear
+      $@
+      sleep 1
+    done
+}
+
+danger() {
+    while true; do
+        read -r -p "Do you wish to continue *AT YOUR OWN RISK* ? (yes|No) " yn
+        case $yn in
+            [Yy]* ) res=OK; break;;
+            [Nn]* ) exit;;
+            * ) exit;;
+        esac
+    done
+    echo "$res"
+}
+
+ask() {
+    # call with a prompt string or use a default
+    read -r -p "${1:-Are you sure? [y/N]} " response
+    echo $response
+}
+
+confirm () {
+    # call with a prompt string or use a default
+    read -r -p "${1:-Are you sure? [y/N]} " response
+    case $response in
+        [yY][eE][sS]|[yY]) 
+            echo Y
+            ;;
+        *)
+            echo N
+            ;;
+    esac
+}
+
+countdown(){
+    date1=$((`date +%s` + $1));
+    while [ "$date1" -ge `date +%s` ]; do 
+    ## Is this more than 24h away?
+    days=$(($(($(( $date1 - $(date +%s))) * 1 ))/86400))
+    echo -ne "$days day(s) and $(date -u --date @$(($date1 - `date +%s`)) +%H:%M:%S)\r"; 
+    sleep 0.1
+    done
+}
+stopwatch(){
+    clear
+    date1=`date +%s`; 
+    while true; do 
+    days=$(( $(($(date +%s) - date1)) / 86400 ))
+    echo -ne "$((`date +%s` - $date1))\r";
+    sleep 0.1
+    done
+}
+
+loop(){
+    date1=`date +%s`; 
+    while true; do 
+    echo -ne "1
+2\r"
+    sleep 0.1
+    done
+}
+
+prompt_update() {
+    if [ "$NINE_CLOUD_CLUSTER_ID" ]; then
+        _cluster=$NINE_CLOUD_CLUSTER_ID
+    elif [ "$NINE_CLOUD_ACCOUNT_ID" ]; then
+        _cluster=$NINE_CLOUD_ACCOUNT_ID
+    else
+        _cluster=ncloud
+    fi
+
+    DIR=$(basename `pwd`);
+    #if [ "$DIR" = "/home/ming" ]; then relative="[\e[1;32m\u\e[m@\e[1;34m\h\e[m \e[1;33m\W\e[m]" ;else export PS1="[\w]";fi;
+    if [ "$NINE_CLOUD_ACCOUNT_ID" == "" ]; then
+        PS1="$location: $_cluster/$DIR$ "
+    elif [ "$NINE_CLOUD_ACCOUNT_USER" != "" ]; then
+        PS1="$NINE_CLOUD_ACCOUNT_ID@$location: $_cluster/$NINE_CLOUD_ACCOUNT_USER/$DIR$ "
+    else
+        PS1="$NINE_CLOUD_ACCOUNT_ID@$location: $_cluster/$DIR$ "
+    fi
+    export PS1=$PS1
+    #export PS1="[\e[1;32m\u\e[m@\e[1;34m\h\e[m \e[1;33m\W\e[m]"
+}

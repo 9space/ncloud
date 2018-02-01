@@ -1,0 +1,17 @@
+source $NINE_CLOUD_ROOT/lib/docker
+
+#echo aws ecr get-login --region $AWS_DEFAULT_REGION --no-include-email
+check_aws=$(aws 2>&1>/dev/null)
+if [ "$?" == 1 ]; then
+    docker_aws ecr get-login --region $AWS_DEFAULT_REGION --no-include-email | sh -
+else
+    check_version=`aws --version 2>&1 | grep 1.14`
+    if [ "$check_version" == "" ]; then
+        echo "aws version below 1.14 - use ncloud aws"
+        CMD="`docker_aws ecr get-login --region $AWS_DEFAULT_REGION --no-include-email`"
+        CMD=${CMD//[$'\t\r\n']}
+        echo $CMD | sh -
+    else
+        aws ecr get-login --region $AWS_DEFAULT_REGION --no-include-email | sh -
+    fi
+fi

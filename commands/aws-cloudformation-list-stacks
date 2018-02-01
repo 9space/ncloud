@@ -1,0 +1,8 @@
+echo DELETE_IN_PROGRESS
+aws cloudformation list-stacks --stack-status-filter DELETE_IN_PROGRESS
+echo CREATE_IN_PROGRESS 
+aws cloudformation list-stacks --stack-status-filter CREATE_IN_PROGRESS
+echo CREATE_FAILED
+aws cloudformation list-stacks --stack-status-filter CREATE_FAILED
+echo CREATE_COMPLETE
+aws cloudformation list-stacks --stack-status-filter CREATE_COMPLETE

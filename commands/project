@@ -1,0 +1,61 @@
+source $NINE_CLOUD_ROOT/lib/ninecloud
+source $NINE_CLOUD_ROOT/lib/config
+
+has_docker_compose
+if [ "$a" == "0" ]; then
+    RUN=docker-compose
+else
+    RUN=`echo No docker-compose`
+fi
+
+source $NINE_CLOUD_ROOT/lib/release
+
+run() {
+    # try local first
+    REMOTE_DOCKER_IMAGE_URL=$DOCKER_IMAGE_URL
+    DOCKER_IMAGE_URL=$(local_repo)
+    $RUN $@
+
+    if [ $? -eq 1 ]; then
+        ecr_login
+        DOCKER_IMAGE_URL=$REMOTE_DOCKER_IMAGE_URL
+        $RUN $@
+    fi
+}
+
+settings() {
+    check
+}
+
+attach() {
+    echo connect
+    ID=`run ps -q`
+    docker exec -it $ID bash
+}
+
+case "$1" in
+    respawn)
+        run down
+        run rm -f
+        run build
+        run up -d
+        ;;
+    restart)
+        run down
+        run up -d
+        ;;
+    build|down)
+        run $1
+        ;;
+    up)
+        run $1 -d
+        ;;
+    attach)
+        attach
+        ;;
+    settings)
+        settings
+        ;;
+    *)
+        ;;
+esac
